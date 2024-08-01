@@ -1,0 +1,17 @@
+#!/bin/bash
+echo "Running pre-receive hook..."
+while read oldrev newrev refname; do
+    # Extract the branch name from the refname
+    branch=$(basename "$refname")
+
+    # Define the pattern for branch name validation
+    pattern="patch/[A-Z]+-[a-zA-Z0-9_-]+"
+
+    # Check if the branch name matches the pattern
+    if ! [[ $branch =~ $pattern ]]; then
+        echo "Error: Invalid branch name pattern. Branch name should be in the format 'patch/<JIRA_ID>-<short_description>'."
+        exit 1
+    fi
+done
+
+exit 0
