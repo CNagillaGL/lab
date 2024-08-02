@@ -1,0 +1,44 @@
+name: Branch Name Validation
+on:
+  create:
+    branches:
+    - '**'
+
+jobs:
+  check-branch-name:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Validate Branch Name
+      run: |
+        BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/})
+        if [[ ! "$BRANCH_NAME" =~ ^(patch|feature)\/[A-Z]+-[0-9]+-.+ ]]; then
+            echo "Branch name $BRANCH_NAME is invalid."
+            echo "Please use the format: patch/<jira-id>-<small-description> or feature/<jira-id>-<small-description>"
+            exit 1
+        else
+            echo "Branch name $BRANCH_NAME is valid."
+        fi
+    - name: Post Status Check
+      uses: actions/github-script@v4
+      with:
+        script: |
+            const branchName = process.env.GITHUB_REF.replace('refs/heads/', '');
+            const pattern = /^(patch|feature)\/[A-Z]+-[0-9]+-.+/;
+            const isValid = pattern.test(branchName);
+
+            const status = {
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            sha: context.sha,
+            state: isValid ? 'success' : 'failure',
+            description: isValid ? 'Branch name is valid.' : 'Branch name is invalid.',
+            context: 'Branch Name Validation'
+            };
+
+            await github.repos.createCommitStatus(status);
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
