@@ -1,0 +1,46 @@
+name: Branch Name Check
+
+on:
+  create:
+    branches:
+      - '*'
+  push:
+    branches:
+      - '*'
+permissions:
+  contents: write
+jobs:
+  check-branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v2
+
+      - name: Get branch name
+        id: get_branch
+        run: echo "::set-output name=branch::$(echo ${GITHUB_REF#refs/heads/})"
+
+      - name: Validate branch name
+        id: validate_branch
+        run: |
+          branch_name=${{ steps.get_branch.outputs.branch }}
+          pattern="^patch/[A-Z]+-[0-9]+-.+"
+          if [[ "$branch_name" == "main" ]]; then
+            echo "Branch name is 'main', skipping validation."
+            exit 0
+          fi
+          if [[ ! "$branch_name" =~ $pattern ]]; then
+            echo "Branch name does not match the required pattern."
+            exit 1
+          fi
+          echo "Branch name is valid."
+
+      - name: Delete invalid branch
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          branch_name=${{ steps.get_branch.outputs.branch }}
+          echo $branch_name
+          git remote set-url origin https://$GITHUB_TOKEN@github.com/CNagillaGL/lab.git
+          git push origin --delete $branch_name
